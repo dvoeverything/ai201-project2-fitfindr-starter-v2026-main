@@ -40,7 +40,9 @@
 ## What This Does
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
-
+I am building an agent that makes it easier easier to thrift, Currently someone has to go to different thrift sites comparing prices. 
+With fitfinder : The shopper asks: "a vintage graphic tee under $30, size M"
+FitFindr gives back:  Y2K Baby Tee, Butterfly Print (lst_002). $18 on Depop, excellent condition, tagged S/M. The listing says it fits like a small, so size up if you want it looser.
 
 
 ---
@@ -59,24 +61,24 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Filters the 40 listings by the fields the shopper names (category, style tags, size, color, maximum price, condition, brand, platform). It ranks the matches by how many requested filters each one satisfies.
+- **Inputs:**  query or keywords (str), max_price (float or None), size (str or None)
+- **Returns:** A list of listing dicts, best match first. Each dict has id (str), title (str), description (str), category (str), style_tags (list), size (str), condition (str), price (float), colors (list), brand (str or None) and platform (str).
+- **When it has nothing:** Returns an empty list []. It never raises an error.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Pairs the chosen listing with items from the shopper’s wardrobe that match in color and style, and explains why they go together.
+- **Inputs:** listing (dict, one item from search_listings), wardrobe (list of dicts with id, name, category, colors, style_tags, notes)
+- **Returns:** A dict with the wardrobe items chosen (a list of ids) and a short reason (str).
+- **When it has nothing:** If the wardrobe is empty or nothing matches, it returns an empty items list and a reason saying so. The agent still writes the fit card for the listing alone.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Writes a short shareable caption for the find and the outfit.
+- **Inputs:** listing (dict), outfit (dict from suggest_outfit)
+- **Returns:** A caption (str) that names the item, its price and the pairing.
+- **When it has nothing:** If the outfit has no wardrobe items, it writes a caption about the listing alone. It never returns an empty string.
 
 ---
 
@@ -93,14 +95,18 @@
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If search_listings returns an empty list, put a “no matches” message in the session and stop. Otherwise take the first result and go to suggest_outfit, then pass its result to create_fit_card.
 
 **Where it lives:** `agent.py::run_agent`
 
 **How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+Price: a regex finds under $30, below 30 or $30 and returns the number as a float. The result is max_price.
+Size: a regex finds size followed by a token, so size M gives "M". The result is size.
+Description: what’s left after removing those two phrases is the description.
+Missing parts: any part not found is None.
 
 **What moves through the session:** <!-- which fields, in what order -->
-
+query -> parsed (description, size, max_price) -> search_results -> selected_item (the first result) -> outfit_suggestion -> fit_card. error stays None on a full run. On the no-match path error is set, and selected_item, outfit_suggestion and fit_card stay None.
 ---
 
 ## Sample Run

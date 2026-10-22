@@ -28,7 +28,7 @@ tool calls and returns a fit card — in at least 4 of 5 tries.
 <!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
      "my search is a plain keyword match and some phrasings will miss" is a
      real answer. -->
-
+search_listings matches the words in the query against listing text, and the sizes in the data are free text ("S/M", "W30 L30", "XL (oversized)"). Some phrasings will miss even when a good listing exists. Two of the three tools also call a model, which can fail or time out. Allowing one miss in five fits that, and 5 of 5 would set a target I couldn’t control.
 ---
 
 ## 2. An impossible query stops before the second tool
@@ -39,7 +39,7 @@ Given a query that matches no listings, the agent stops before calling
 **Why this target:**
 <!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
      about this path? -->
-
+This path is plain code. run_agent checks if not session["search_results"], sets error and returns, and no model is involved. A failure here is a bug in the loop, not a wording problem, so it should be 5 of 5. The loop also has no later step that could make the early exit flaky.
 ---
 
 ## 3. Something about state
@@ -54,10 +54,10 @@ Given a query that matches no listings, the agent stops before calling
      compares session["selected_item"] against what actually reached
      suggest_outfit is the shape you're after. -->
 
-
+For 5 queries that each match a listing, session["selected_item"]["id"] equals session["search_results"][0]["id"]. It also equals the id of the item passed into suggest_outfit and create_fit_card, which I check by recording the argument each tool receives — 5 of 5 tries.
 
 **Why this target:**
-
+If the agent passes the wrong item to a tool, it looks like the model did a bad job, when really an old or overwritten value got passed along. Checking that the ids match at each step catches that. It’s 5 of 5 because the item is just copied from one place to another with no model involved, so any mismatch is a bug.
 
 
 ---
@@ -75,10 +75,10 @@ Given a query that matches no listings, the agent stops before calling
      sentence? A card longer than a caption anyone would post? Any of those can
      be turned into a number. -->
 
-
+For 5 different items, the fit card contains the item’s price (for example $18) and is 300 characters or fewer, in at least 4 of 5 tries.
 
 **Why this target:**
-
+The fit card comes from a model, so the wording is different every time and I can’t check for exact text. The price is what a shopper cares about most, and I can check for it easily. 300 characters is about as long as a caption people actually post. I’m allowing one miss out of five because the model might write "$" as "dollars".
 
 
 ---
@@ -92,11 +92,10 @@ Given a query that matches no listings, the agent stops before calling
      search respects a price ceiling — anything, as long as it names a number
      or an observable outcome. -->
 
-
+For 5 queries that each include a price limit (such as under $30), every listing returned by search_listings costs no more than that limit — 5 of 5 queries, with zero over-limit listings in any of them.
 
 **Why this target:**
-
-
+If someone says “under $30” and gets a $45 jacket, that’s just wrong. Checking the price is a simple number comparison, so I expect it to pass every time. If it fails, the bug is either in how I read the price out of the query or in the <= check, and this test would catch both.
 
 ---
 

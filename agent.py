@@ -107,9 +107,51 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     """
     session = new_session(query, wardrobe)
 
-    # TODO: delete these two lines and build the loop.
-    session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
-    return session
+    # TODO:
+        # 1. Start a session.
+    session = new_session(query, wardrobe)
+
+    count = 0
+    while True:
+        # 2. Count the times round the loop; this raises past MAX_ITERATIONS.
+        count += 1
+        trace.check_iterations(count)
+
+        # 3. Parse the query. Regex, no model call.
+        session["parsed"] = parse_query(query)
+        parsed = session["parsed"]
+
+        # 4. Search, then branch on the result.
+        session["search_results"] = search_listings(
+            parsed["description"], parsed["size"], parsed["max_price"]
+        )
+        if not session["search_results"]:
+            asked = f"'{parsed['description']}'"
+            if parsed["size"]:
+                asked += f" in size {parsed['size']}"
+            if parsed["max_price"] is not None:
+                asked += f" under ${parsed['max_price']:g}"
+            session["error"] = (
+                f"No listings matched {asked}. "
+                "Try a higher price, a different size, or fewer keywords."
+            )
+            return session
+
+        # 5. Choose an item: the first result.
+        session["selected_item"] = session["search_results"][0]
+
+        # 6. Suggest an outfit from the item and the wardrobe.
+        session["outfit_suggestion"] = suggest_outfit(
+            session["selected_item"], session["wardrobe"]
+        )
+
+        # 7. Create the fit card from the outfit and the item.
+        session["fit_card"] = create_fit_card(
+            session["outfit_suggestion"], session["selected_item"]
+        )
+
+        # 8. Return the session.
+        return session
 
 
 # ── running it directly ───────────────────────────────────────────────────────
