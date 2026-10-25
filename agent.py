@@ -17,6 +17,7 @@ import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
 from generate import ModelUnavailable
+import re
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -47,6 +48,32 @@ def new_session(query: str, wardrobe: dict) -> dict:
     }
 
 
+
+_PRICE_PATTERNS = [
+    r"(?:under|below|less than|max|<)\s*\$?\s*(\d+(?:\.\d+)?)",
+    r"\$\s*(\d+(?:\.\d+)?)",
+]
+_SIZE_PATTERN = r"\bsize\s+([A-Za-z0-9/]+)"
+
+
+def parse_query(query: str) -> dict:
+    """Regex for max_price and size; whatever is left is the description."""
+    max_price = None
+    for pattern in _PRICE_PATTERNS:
+        match = re.search(pattern, query, re.IGNORECASE)
+        if match:
+            max_price = float(match.group(1))
+            break
+
+    size_match = re.search(_SIZE_PATTERN, query, re.IGNORECASE)
+    size = size_match.group(1).upper() if size_match else None
+
+    description = query
+    for pattern in _PRICE_PATTERNS + [_SIZE_PATTERN]:
+        description = re.sub(pattern, "", description, flags=re.IGNORECASE)
+    description = re.sub(r"\s+", " ", description).strip(" ,.")
+
+    return {"description": description, "size": size, "max_price": max_price}
 # ── planning loop ─────────────────────────────────────────────────────────────
 
 def run_agent(query: str, wardrobe: dict) -> dict:
